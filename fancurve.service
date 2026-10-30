@@ -1,0 +1,16 @@
+[Unit]
+Description=fancurve: fan curves from CPU and GPU temperatures
+After=systemd-modules-load.service
+
+[Service]
+ExecStart=/usr/local/bin/fancurve
+# Also runs after a crash or SIGKILL: CPU_FAN back to the BIOS curve.
+ExecStopPost=/usr/local/bin/fancurve restore
+RuntimeDirectory=fancurve
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

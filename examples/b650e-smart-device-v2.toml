@@ -1,0 +1,115 @@
+# A desktop: ASUS ROG STRIX B650E-F (Nuvoton NCT6799, needs the
+# nct6775 module), Ryzen 7 7800X3D, an NVIDIA RTX card, NZXT H510 Flow with
+# an NZXT Smart Device V2 (nzxt-smart2 driver), Noctua fans and an NH-D15.
+
+default_preset = "balanced"
+failsafe = 60            # duty for fans without restore_enable when the daemon stops
+
+[sensors]
+cpu = { hwmon = "k10temp", label = "Tctl" }
+gpu = "nvml"             # or { hwmon = "amdgpu", label = "edge" }, or leave out
+
+# Extra temperatures for the status file. Without a label, temp1 of every
+# hwmon with that name (one per RAM stick).
+[[sensors.temp]]
+name = "CCD"
+hwmon = "k10temp"
+label = "Tccd1"
+
+[[sensors.temp]]
+name = "Board"
+hwmon = "nct6799"
+label = "SYSTIN"
+
+[[sensors.temp]]
+name = "Chipset"
+hwmon = "nct6799"
+label = "CPUTIN"
+
+[[sensors.temp]]
+name = "RAM"
+hwmon = "spd5118"
+
+# Fans without `points` follow the active preset's case curve, times `scale`.
+# Same-model fans at nearly the same speed beat ("wah-wah"), hence the
+# offsets: top and rear at 0.85 of the front.
+[[fan]]
+name = "front"
+label = "Front"
+hwmon = "nzxtsmart2"
+pwm = 3                  # 2x NF-A14 on a splitter; map channels with `fancurve identify`
+history = true
+
+[[fan]]
+name = "top"
+label = "Top"
+hwmon = "nzxtsmart2"
+pwm = 1                  # NF-A14
+scale = 0.85
+
+[[fan]]
+name = "rear"
+label = "Rear"
+hwmon = "nzxtsmart2"
+pwm = 2                  # NF-A12x25, next to the cooler's NF-A12x25
+scale = 0.85
+avoid_beat_with = "cooler"
+beat_band = 0.12         # stay outside +-12% of the cooler's duty
+
+# Fans with `points` follow the CPU temperature on their own curve. This
+# board ignores writes to the chip's automatic curve, so the daemon drives
+# CPU_FAN in manual mode and restore_enable hands it back to the BIOS
+# (SmartFan IV = 5) whenever it stops.
+[[fan]]
+name = "cooler"
+label = "CPU cooler"
+hwmon = "nct6799"
+pwm = 2
+points = [[40, 36], [55, 48], [70, 57], [80, 70], [88, 100]]
+ramp_up = 1.0            # max %/s
+ramp_down = 0.5
+restore_enable = 5
+history = true
+
+# Case curves are [temp °C, duty %], linear between points, flat beyond.
+[presets.silent]
+min = 25
+gaming_floor = 33
+gpu = [[50, 25], [62, 30], [70, 40], [78, 60], [85, 100]]
+cpu = [[65, 25], [80, 35], [88, 60], [92, 80]]
+ramp_up = 1.0
+ramp_down = 0.4
+
+[presets.balanced]
+min = 30
+gaming_floor = 40
+gpu = [[45, 30], [60, 35], [68, 50], [75, 70], [82, 100]]
+cpu = [[60, 30], [75, 40], [85, 60], [90, 80]]
+ramp_up = 2.0
+ramp_down = 0.5
+
+[presets.performance]
+min = 40
+gaming_floor = 55
+gpu = [[40, 40], [55, 50], [65, 65], [72, 85], [78, 100]]
+cpu = [[55, 40], [70, 55], [80, 75], [88, 100]]
+ramp_up = 4.0
+ramp_down = 0.7
+
+# Game mode (fancurve game off|on|auto) runs case fans on this preset. Auto
+# enters after enter_s of GPU load at or above gaming_util and leaves after
+# exit_s below quiet_util.
+[game]
+preset = "performance"
+gaming_util = 40
+quiet_util = 25
+enter_s = 20
+exit_s = 60
+
+# Wall power estimate: CPU package (RAPL) + GPU board power (NVML) + rest_w
+# for board, RAM, SSDs, fans and RGB, over the PSU efficiency.
+[power]
+rest_w = 45
+psu_efficiency = 0.90
+tariff_per_kwh = 0.95
+currency = "R$"
